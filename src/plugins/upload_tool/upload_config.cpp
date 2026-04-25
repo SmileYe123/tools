@@ -121,6 +121,8 @@ QJsonObject UploadConfig::projectToJson(const ProjectConfig& config) const
     obj["server_url"] = config.serverUrl;
     obj["default_exe_path"] = config.defaultExePath;
     obj["version_prefix"] = config.versionPrefix;
+    obj["publish_mode"] = static_cast<int>(config.publishMode);
+    obj["self_server_port"] = config.selfServerPort;
     return obj;
 }
 
@@ -132,5 +134,7 @@ ProjectConfig UploadConfig::jsonToProject(const QJsonObject& obj) const
     config.serverUrl = obj.value("server_url").toString();
     config.defaultExePath = obj.value("default_exe_path").toString();
     config.versionPrefix = obj.value("version_prefix").toString("V");
+    config.publishMode = static_cast<PublishMode>(obj.value("publish_mode").toInt(0));
+    config.selfServerPort = obj.value("self_server_port").toInt(8080);
     return config;
 }

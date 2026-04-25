@@ -11,6 +11,8 @@
 #include <QGridLayout>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QComboBox>
+#include <QSpinBox>
 
 class ProjectManageDialog : public QDialog
 {
@@ -30,6 +32,7 @@ private slots:
     void selectDefaultExePath();
     void onProjectSelectionChanged();
     void saveProject();
+    void onPublishModeChanged(int index);
 
 private:
     void loadProjectsList();
@@ -44,6 +47,10 @@ private:
     QLineEdit* m_serverUrlEdit = nullptr;
     QLineEdit* m_defaultExePathEdit = nullptr;
     QLineEdit* m_versionPrefixEdit = nullptr;
+    QComboBox* m_publishModeCombo = nullptr;
+    QSpinBox* m_selfServerPortSpin = nullptr;
+    QLabel* m_serverDirLabel = nullptr;
+    QLabel* m_serverUrlLabel = nullptr;
     QPushButton* m_addBtn = nullptr;
     QPushButton* m_editBtn = nullptr;
     QPushButton* m_deleteBtn = nullptr;

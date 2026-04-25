@@ -4,7 +4,7 @@ ProjectManageDialog::ProjectManageDialog(QWidget* parent)
     : QDialog(parent)
 {
     setWindowTitle(tr("项目管理"));
-    resize(700, 500);
+    resize(700, 550);
 
     QHBoxLayout* mainLayout = new QHBoxLayout(this);
     mainLayout->setSpacing(16);
@@ -48,12 +48,25 @@ ProjectManageDialog::ProjectManageDialog(QWidget* parent)
     QGridLayout* gridLayout = new QGridLayout();
     gridLayout->setSpacing(10);
 
-    gridLayout->addWidget(new QLabel(tr("项目名称:")), 0, 0);
+    int row = 0;
+    gridLayout->addWidget(new QLabel(tr("项目名称:")), row, 0);
     m_appNameEdit = new QLineEdit();
     m_appNameEdit->setPlaceholderText(tr("例如: MyApp"));
-    gridLayout->addWidget(m_appNameEdit, 0, 1);
+    gridLayout->addWidget(m_appNameEdit, row, 1);
 
-    gridLayout->addWidget(new QLabel(tr("服务器目录:")), 1, 0);
+    row++;
+    gridLayout->addWidget(new QLabel(tr("发布模式:")), row, 0);
+    m_publishModeCombo = new QComboBox();
+    m_publishModeCombo->addItem(tr("📁 本地服务器（复制到本地目录）"), static_cast<int>(PublishMode::LocalServer));
+    m_publishModeCombo->addItem(tr("🌐 远程服务器（HTTP 上传）"), static_cast<int>(PublishMode::RemoteServer));
+    m_publishModeCombo->addItem(tr("🖥️ 自身作为服务器（启动内置 HTTP 服务）"), static_cast<int>(PublishMode::SelfAsServer));
+    connect(m_publishModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ProjectManageDialog::onPublishModeChanged);
+    gridLayout->addWidget(m_publishModeCombo, row, 1);
+
+    row++;
+    m_serverDirLabel = new QLabel(tr("服务器目录:"));
+    gridLayout->addWidget(m_serverDirLabel, row, 0);
     QHBoxLayout* serverDirLayout = new QHBoxLayout();
     m_serverDirEdit = new QLineEdit();
     m_serverDirEdit->setPlaceholderText(tr("选择服务器存储路径"));
@@ -62,14 +75,25 @@ ProjectManageDialog::ProjectManageDialog(QWidget* parent)
     QPushButton* selectServerBtn = new QPushButton(tr("浏览"));
     connect(selectServerBtn, &QPushButton::clicked, this, &ProjectManageDialog::selectServerDir);
     serverDirLayout->addWidget(selectServerBtn);
-    gridLayout->addLayout(serverDirLayout, 1, 1);
+    gridLayout->addLayout(serverDirLayout, row, 1);
 
-    gridLayout->addWidget(new QLabel(tr("服务器 URL:")), 2, 0);
+    row++;
+    m_serverUrlLabel = new QLabel(tr("服务器 URL:"));
+    gridLayout->addWidget(m_serverUrlLabel, row, 0);
     m_serverUrlEdit = new QLineEdit();
     m_serverUrlEdit->setPlaceholderText(tr("http://192.168.1.100:8080"));
-    gridLayout->addWidget(m_serverUrlEdit, 2, 1);
+    gridLayout->addWidget(m_serverUrlEdit, row, 1);
 
-    gridLayout->addWidget(new QLabel(tr("默认 EXE 路径:")), 3, 0);
+    row++;
+    gridLayout->addWidget(new QLabel(tr("内置服务端口:")), row, 0);
+    m_selfServerPortSpin = new QSpinBox();
+    m_selfServerPortSpin->setRange(1, 65535);
+    m_selfServerPortSpin->setValue(8080);
+    m_selfServerPortSpin->setEnabled(false);
+    gridLayout->addWidget(m_selfServerPortSpin, row, 1);
+
+    row++;
+    gridLayout->addWidget(new QLabel(tr("默认 EXE 路径:")), row, 0);
     QHBoxLayout* exePathLayout = new QHBoxLayout();
     m_defaultExePathEdit = new QLineEdit();
     m_defaultExePathEdit->setPlaceholderText(tr("选择默认 EXE 输出目录"));
@@ -78,13 +102,14 @@ ProjectManageDialog::ProjectManageDialog(QWidget* parent)
     QPushButton* selectExePathBtn = new QPushButton(tr("浏览"));
     connect(selectExePathBtn, &QPushButton::clicked, this, &ProjectManageDialog::selectDefaultExePath);
     exePathLayout->addWidget(selectExePathBtn);
-    gridLayout->addLayout(exePathLayout, 3, 1);
+    gridLayout->addLayout(exePathLayout, row, 1);
 
-    gridLayout->addWidget(new QLabel(tr("版本前缀:")), 4, 0);
+    row++;
+    gridLayout->addWidget(new QLabel(tr("版本前缀:")), row, 0);
     m_versionPrefixEdit = new QLineEdit();
     m_versionPrefixEdit->setText("V");
     m_versionPrefixEdit->setMaximumWidth(80);
-    gridLayout->addWidget(m_versionPrefixEdit, 4, 1);
+    gridLayout->addWidget(m_versionPrefixEdit, row, 1);
 
     formLayout->addLayout(gridLayout);
     formLayout->addStretch();
@@ -155,6 +180,9 @@ void ProjectManageDialog::populateForm(const ProjectConfig& config)
     m_serverUrlEdit->setText(config.serverUrl);
     m_defaultExePathEdit->setText(config.defaultExePath);
     m_versionPrefixEdit->setText(config.versionPrefix);
+    m_publishModeCombo->setCurrentIndex(static_cast<int>(config.publishMode));
+    m_selfServerPortSpin->setValue(config.selfServerPort);
+    onPublishModeChanged(static_cast<int>(config.publishMode));
 }
 
 void ProjectManageDialog::clearForm()
@@ -164,7 +192,10 @@ void ProjectManageDialog::clearForm()
     m_serverUrlEdit->clear();
     m_defaultExePathEdit->clear();
     m_versionPrefixEdit->setText("V");
+    m_publishModeCombo->setCurrentIndex(0);
+    m_selfServerPortSpin->setValue(8080);
     m_currentIndex = -1;
+    onPublishModeChanged(0);
 }
 
 ProjectConfig ProjectManageDialog::getFormConfig() const
@@ -175,6 +206,8 @@ ProjectConfig ProjectManageDialog::getFormConfig() const
     config.serverUrl = m_serverUrlEdit->text().trimmed();
     config.defaultExePath = m_defaultExePathEdit->text().trimmed();
     config.versionPrefix = m_versionPrefixEdit->text().trimmed();
+    config.publishMode = static_cast<PublishMode>(m_publishModeCombo->currentIndex());
+    config.selfServerPort = m_selfServerPortSpin->value();
     return config;
 }
 
@@ -271,5 +304,47 @@ void ProjectManageDialog::selectDefaultExePath()
     if (!dirPath.isEmpty()) {
         m_defaultExePathEdit->setText(dirPath);
         m_saveBtn->setEnabled(m_currentIndex >= 0 || !m_appNameEdit->text().isEmpty());
+    }
+}
+
+void ProjectManageDialog::onPublishModeChanged(int index)
+{
+    PublishMode mode = static_cast<PublishMode>(index);
+    
+    switch (mode) {
+    case PublishMode::LocalServer:
+        // 本地服务器模式：需要服务器目录，不需要 URL
+        m_serverDirLabel->setText(tr("服务器目录:"));
+        m_serverUrlLabel->setText(tr("服务器 URL:"));
+        m_serverDirEdit->setEnabled(true);
+        m_serverDirEdit->setReadOnly(true);
+        m_serverUrlEdit->setEnabled(true);
+        m_serverUrlEdit->setReadOnly(false);
+        m_selfServerPortSpin->setEnabled(false);
+        break;
+        
+    case PublishMode::RemoteServer:
+        // 远程服务器模式：需要服务器 URL，不需要目录
+        m_serverDirLabel->setText(tr("本地缓存目录:"));
+        m_serverUrlLabel->setText(tr("远程服务器 URL:"));
+        m_serverDirEdit->setEnabled(true);
+        m_serverDirEdit->setReadOnly(true);
+        m_serverUrlEdit->setEnabled(true);
+        m_serverUrlEdit->setReadOnly(false);
+        m_selfServerPortSpin->setEnabled(false);
+        break;
+        
+    case PublishMode::SelfAsServer:
+        // 自身作为服务器模式：需要端口，使用本地目录
+        m_serverDirLabel->setText(tr("服务根目录:"));
+        m_serverUrlLabel->setText(tr("访问 URL:"));
+        m_serverDirEdit->setEnabled(true);
+        m_serverDirEdit->setReadOnly(true);
+        m_serverUrlEdit->setEnabled(true);
+        m_serverUrlEdit->setReadOnly(true);
+        m_selfServerPortSpin->setEnabled(true);
+        // 自动生成 URL
+        m_serverUrlEdit->setText(QString("http://localhost:%1").arg(m_selfServerPortSpin->value()));
+        break;
     }
 }

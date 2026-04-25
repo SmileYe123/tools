@@ -9,12 +9,21 @@
 #include <QDir>
 #include <QStandardPaths>
 
+// 发布模式枚举
+enum class PublishMode {
+    LocalServer = 0,    // 本地服务器模式：复制到本地目录
+    RemoteServer = 1,   // 远程服务器模式：通过 HTTP 上传到远程服务器
+    SelfAsServer = 2    // 自身作为服务器模式：启动内置 HTTP 服务器
+};
+
 struct ProjectConfig {
     QString appName;
     QString serverDir;
     QString serverUrl;
     QString defaultExePath;
     QString versionPrefix;
+    PublishMode publishMode = PublishMode::LocalServer;  // 发布模式
+    int selfServerPort = 8080;  // 自身作为服务器时的端口
 };
 
 class UploadConfig
