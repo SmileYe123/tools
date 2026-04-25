@@ -22,12 +22,12 @@ public:
 private:
     void setupUI();
     void setupConnections();
-    void showWelcomePage();
+    QWidget* createWelcomePage();
+    QWidget* createQuickCard(const QString& title, const QString& description);
 
     QSplitter* m_splitter = nullptr;
     Sidebar* m_sidebar = nullptr;
     QStackedWidget* m_stackWidget = nullptr;
     PluginManager* m_pluginManager = nullptr;
     Theme* m_theme = nullptr;
-    QLabel* m_welcomeLabel = nullptr;
 };

@@ -20,6 +20,12 @@ public:
     QString category() const { return m_category; }
 
 protected:
+    void setName(const QString& name) { m_name = name; }
+    void setIcon(const QString& icon) { m_icon = icon; }
+    void setDescription(const QString& desc) { m_description = desc; }
+    void setCategory(const QString& category) { m_category = category; }
+
+private:
     QString m_name;
     QString m_icon;
     QString m_description;

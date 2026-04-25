@@ -8,6 +8,7 @@
 #include "plugins/sql_formatter/sql_formatter.h"
 #include "plugins/text_tools/text_tools.h"
 #include "plugins/timestamp_tool/timestamp_tool.h"
+#include "plugins/upload_tool/upload_tool.h"
 
 PluginManager::PluginManager(QObject* parent)
     : QObject(parent)
@@ -31,6 +32,7 @@ void PluginManager::loadPlugins()
     m_plugins.append(new SqlFormatterPlugin(this));
     m_plugins.append(new TextToolPlugin(this));
     m_plugins.append(new TimestampToolPlugin(this));
+    m_plugins.append(new UploadToolPlugin(this));
 }
 
 QList<BasePlugin*> PluginManager::plugins() const

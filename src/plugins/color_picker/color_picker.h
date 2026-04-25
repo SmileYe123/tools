@@ -42,10 +42,10 @@ class ColorPickerPlugin : public BasePlugin
 public:
     explicit ColorPickerPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("颜色选择");
-        m_icon = "🎨";
-        m_description = tr("屏幕取色和颜色格式转换");
-        m_category = "ui";
+        setName(tr("颜色选择"));
+        setIcon("🎨");
+        setDescription(tr("屏幕取色和颜色格式转换"));
+        setCategory("ui");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override
@@ -169,7 +169,9 @@ private:
         int s = color.hslSaturation();
         int l = color.lightness();
         QString hStr = (h == -1) ? "0" : QString::number(h);
-        m_hslInput->setText(QString("HSL(%1, %2%, %3%)").arg(hStr).arg(s).arg(l));
+        int sPercent = s * 100 / 255;
+        int lPercent = l * 100 / 255;
+        m_hslInput->setText(QString("HSL(%1, %2%, %3%)").arg(hStr).arg(sPercent).arg(lPercent));
     }
 
     QComboBox* m_formatCombo = nullptr;

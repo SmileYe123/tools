@@ -13,13 +13,15 @@
 
 class TextToolPlugin : public BasePlugin
 {
+    Q_OBJECT
+
 public:
     explicit TextToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("文本工具");
-        m_icon = "📝";
-        m_description = tr("文本格式转换、大小写转换、统计等");
-        m_category = "text";
+        setName(tr("文本工具"));
+        setIcon("📝");
+        setDescription(tr("文本格式转换、大小写转换、统计等"));
+        setCategory("text");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override

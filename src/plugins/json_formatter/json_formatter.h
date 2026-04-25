@@ -18,13 +18,15 @@
 
 class JsonFormatterPlugin : public BasePlugin
 {
+    Q_OBJECT
+
 public:
     explicit JsonFormatterPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("JSON格式化");
-        m_icon = "📋";
-        m_description = tr("JSON格式化、压缩、验证工具");
-        m_category = "text";
+        setName(tr("JSON格式化"));
+        setIcon("📋");
+        setDescription(tr("JSON格式化、压缩、验证工具"));
+        setCategory("text");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override
@@ -97,7 +99,20 @@ private slots:
         int indent = m_indentSpin->value();
         QByteArray formatted = doc.toJson(QJsonDocument::Indented);
         QString formattedStr = QString::fromUtf8(formatted);
-        if (indent != 4) { formattedStr.replace("    ", QString(indent, ' ')); }
+        if (indent != 4) {
+            QString indentStr(indent, ' ');
+            QStringList lines = formattedStr.split('\n');
+            for (int i = 0; i < lines.size(); ++i) {
+                int leadingSpaces = 0;
+                while (leadingSpaces < lines[i].length() && lines[i][leadingSpaces] == ' ')
+                    leadingSpaces++;
+                if (leadingSpaces > 0) {
+                    int depth = leadingSpaces / 4;
+                    lines[i] = QString(depth * indent, ' ') + lines[i].mid(leadingSpaces);
+                }
+            }
+            formattedStr = lines.join('\n');
+        }
         m_outputEdit->setText(formattedStr);
     }
 

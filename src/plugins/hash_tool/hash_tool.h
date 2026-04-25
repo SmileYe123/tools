@@ -22,10 +22,10 @@ class HashToolPlugin : public BasePlugin
 public:
     HashToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("哈希计算");
-        m_icon = "🔐";
-        m_description = tr("计算MD5、SHA1、SHA256哈希值");
-        m_category = "security";
+        setName(tr("哈希计算"));
+        setIcon("🔐");
+        setDescription(tr("计算MD5、SHA1、SHA256哈希值"));
+        setCategory("security");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override

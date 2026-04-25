@@ -15,19 +15,19 @@ public:
 
     QString get(const QString& key, const QString& defaultValue = "")
     {
-        return m_settings->value(key, defaultValue).toString();
+        return m_settings.value(key, defaultValue).toString();
     }
 
     void set(const QString& key, const QVariant& value)
     {
-        m_settings->setValue(key, value);
+        m_settings.setValue(key, value);
     }
+
+    Config(const Config&) = delete;
+    Config& operator=(const Config&) = delete;
 
 private:
-    Config()
-    {
-        m_settings = new QSettings("MultiTool.ini", QSettings::IniFormat);
-    }
+    Config() : m_settings("MultiTool.ini", QSettings::IniFormat) {}
 
-    QSettings* m_settings;
+    QSettings m_settings;
 };

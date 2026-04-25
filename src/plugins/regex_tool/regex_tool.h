@@ -20,10 +20,10 @@ class RegexToolPlugin : public BasePlugin
 public:
     RegexToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("正则工具");
-        m_icon = "🔍";
-        m_description = tr("正则表达式测试、匹配和替换");
-        m_category = "text";
+        setName(tr("正则工具"));
+        setIcon("🔍");
+        setDescription(tr("正则表达式测试、匹配和替换"));
+        setCategory("text");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override

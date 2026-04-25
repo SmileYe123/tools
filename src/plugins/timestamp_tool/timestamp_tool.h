@@ -18,10 +18,10 @@ class TimestampToolPlugin : public BasePlugin
 public:
     TimestampToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("时间戳工具");
-        m_icon = "⏰";
-        m_description = tr("时间戳和日期时间转换");
-        m_category = "text";
+        setName(tr("时间戳工具"));
+        setIcon("⏰");
+        setDescription(tr("时间戳和日期时间转换"));
+        setCategory("text");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override
@@ -87,8 +87,9 @@ private slots:
     void updateCurrentTime()
     {
         QDateTime now = QDateTime::currentDateTime();
-        m_currentLabel->setText(tr("日期: %1 | 时间戳: %2")
+        m_currentLabel->setText(tr("日期: %1 | 秒: %2 | 毫秒: %3")
             .arg(now.toString("yyyy-MM-dd HH:mm:ss"))
+            .arg(now.toSecsSinceEpoch())
             .arg(now.toMSecsSinceEpoch()));
     }
 

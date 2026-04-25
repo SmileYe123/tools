@@ -29,20 +29,6 @@ public:
     static QString themeName(ThemeType type);
 
 private:
-    void initDarkTheme();
-    void initLightTheme();
-    void initOceanBlueTheme();
-    void initForestGreenTheme();
-
     ThemeType m_currentTheme;
-    QString m_primaryColor;
-    QString m_secondaryColor;
-    QString m_backgroundColor;
-    QString m_surfaceColor;
-    QString m_textColor;
-    QString m_textSecondaryColor;
     QString m_accentColor;
-    QString m_borderColor;
-    QString m_hoverColor;
-    QString m_selectedColor;
 };

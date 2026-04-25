@@ -1,5 +1,4 @@
 #include <QApplication>
-#include <QTextCodec>
 #include "core/main_window.h"
 #include "core/config.h"
 

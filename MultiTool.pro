@@ -22,7 +22,10 @@ SOURCES += \
     src/plugins/regex_tool/regex_tool.cpp \
     src/plugins/sql_formatter/sql_formatter.cpp \
     src/plugins/text_tools/text_tools.cpp \
-    src/plugins/timestamp_tool/timestamp_tool.cpp
+    src/plugins/timestamp_tool/timestamp_tool.cpp \
+    src/plugins/upload_tool/upload_tool.cpp \
+    src/plugins/upload_tool/upload_config.cpp \
+    src/plugins/upload_tool/project_manage_dialog.cpp
 
 HEADERS += \
     src/core/config.h \
@@ -39,7 +42,10 @@ HEADERS += \
     src/plugins/regex_tool/regex_tool.h \
     src/plugins/sql_formatter/sql_formatter.h \
     src/plugins/text_tools/text_tools.h \
-    src/plugins/timestamp_tool/timestamp_tool.h
+    src/plugins/timestamp_tool/timestamp_tool.h \
+    src/plugins/upload_tool/upload_tool.h \
+    src/plugins/upload_tool/upload_config.h \
+    src/plugins/upload_tool/project_manage_dialog.h
 
 RESOURCES += \
     resources.qrc

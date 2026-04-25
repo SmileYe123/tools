@@ -22,10 +22,10 @@ class ImageToolPlugin : public BasePlugin
 public:
     ImageToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("图片工具");
-        m_icon = "🖼️";
-        m_description = tr("图片压缩和格式转换");
-        m_category = "media";
+        setName(tr("图片工具"));
+        setIcon("🖼️");
+        setDescription(tr("图片压缩和格式转换"));
+        setCategory("media");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override

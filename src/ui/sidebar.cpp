@@ -12,22 +12,26 @@ Sidebar::Sidebar(QWidget* parent)
 
     QWidget* headerWidget = new QWidget(this);
     headerWidget->setObjectName("sidebar_header");
-    headerWidget->setFixedHeight(80);
+    headerWidget->setFixedHeight(100);
 
     QVBoxLayout* headerLayout = new QVBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(16, 12, 16, 12);
+    headerLayout->setContentsMargins(20, 20, 20, 16);
+    headerLayout->setSpacing(12);
 
     QLabel* titleLabel = new QLabel(tr("多功能工具箱"), headerWidget);
     titleLabel->setObjectName("sidebar_title");
     QFont titleFont = titleLabel->font();
-    titleFont.setPointSize(14);
+    titleFont.setPointSize(16);
     titleFont.setBold(true);
+    titleFont.setLetterSpacing(QFont::PercentageSpacing, 105);
     titleLabel->setFont(titleFont);
     headerLayout->addWidget(titleLabel);
 
     m_searchEdit = new QLineEdit(headerWidget);
     m_searchEdit->setObjectName("sidebar_search");
     m_searchEdit->setPlaceholderText(tr("搜索工具..."));
+    m_searchEdit->setClearButtonEnabled(true);
+    connect(m_searchEdit, &QLineEdit::textChanged, this, &Sidebar::filterTools);
     headerLayout->addWidget(m_searchEdit);
 
     m_mainLayout->addWidget(headerWidget);
@@ -46,8 +50,8 @@ Sidebar::Sidebar(QWidget* parent)
     m_scrollWidget->setObjectName("sidebar_scroll_widget");
 
     m_buttonsLayout = new QVBoxLayout(m_scrollWidget);
-    m_buttonsLayout->setContentsMargins(8, 8, 8, 8);
-    m_buttonsLayout->setSpacing(4);
+    m_buttonsLayout->setContentsMargins(12, 12, 12, 12);
+    m_buttonsLayout->setSpacing(6);
     m_buttonsLayout->addStretch();
 
     m_scrollArea->setWidget(m_scrollWidget);
@@ -75,5 +79,25 @@ void Sidebar::setupToolButtons(const QList<BasePlugin*>& plugins)
         });
 
         buttonGroup->addButton(button);
+    }
+}
+
+void Sidebar::filterTools()
+{
+    QString filter = m_searchEdit->text().trimmed().toLower();
+    for (QToolButton* button : m_toolButtons) {
+        if (filter.isEmpty()) {
+            button->show();
+        } else {
+            button->setVisible(button->text().toLower().contains(filter));
+        }
+    }
+}
+
+void Sidebar::selectTool(int index)
+{
+    if (index >= 0 && index < m_toolButtons.size()) {
+        m_toolButtons[index]->setChecked(true);
+        emit toolSelected(index);
     }
 }

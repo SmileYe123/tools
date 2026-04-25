@@ -18,9 +18,13 @@ public:
     explicit Sidebar(QWidget* parent = nullptr);
 
     void setupToolButtons(const QList<BasePlugin*>& plugins);
+    void selectTool(int index);
 
 signals:
     void toolSelected(int index);
+
+private slots:
+    void filterTools();
 
 private:
     QVBoxLayout* m_mainLayout = nullptr;

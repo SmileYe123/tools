@@ -1,6 +1,22 @@
 #include "main_window.h"
 #include <QApplication>
 #include <QScreen>
+#include <QGridLayout>
+#include <QMouseEvent>
+
+class ClickableCard : public QWidget
+{
+    Q_OBJECT
+public:
+    ClickableCard(QWidget* parent = nullptr) : QWidget(parent) {}
+signals:
+    void clicked();
+protected:
+    void mousePressEvent(QMouseEvent* event) override {
+        if (event->button() == Qt::LeftButton) emit clicked();
+        QWidget::mousePressEvent(event);
+    }
+};
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -16,12 +32,131 @@ MainWindow::MainWindow(QWidget* parent)
     resize(1200, 800);
 
     QScreen* screen = QApplication::primaryScreen();
-    QRect geometry = screen->availableGeometry();
-    move(geometry.center() - rect().center());
+    if (screen) {
+        QRect geometry = screen->availableGeometry();
+        move(geometry.center() - rect().center());
+    }
 }
 
 MainWindow::~MainWindow()
 {
+}
+
+QWidget* MainWindow::createWelcomePage()
+{
+    QWidget* page = new QWidget();
+    QVBoxLayout* mainLayout = new QVBoxLayout(page);
+    mainLayout->setContentsMargins(60, 40, 60, 40);
+    mainLayout->setSpacing(40);
+
+    QLabel* titleLabel = new QLabel(tr("欢迎使用 MultiTool"));
+    titleLabel->setObjectName("welcome_title");
+    titleLabel->setAlignment(Qt::AlignLeft);
+
+    QLabel* subtitleLabel = new QLabel(tr("选择左侧工具开始使用，或点击快捷卡片快速访问"));
+    subtitleLabel->setObjectName("welcome_subtitle");
+    subtitleLabel->setAlignment(Qt::AlignLeft);
+
+    QVBoxLayout* headerLayout = new QVBoxLayout();
+    headerLayout->setSpacing(12);
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addWidget(subtitleLabel);
+
+    mainLayout->addLayout(headerLayout);
+
+    QGridLayout* cardsLayout = new QGridLayout();
+    cardsLayout->setSpacing(20);
+    cardsLayout->setContentsMargins(0, 0, 0, 0);
+
+    QList<QPair<QString, QString>> cards = {
+        {tr("JSON格式化"), tr("美化和验证 JSON 数据")},
+        {tr("时间戳工具"), tr("Unix 时间戳与日期互转")},
+        {tr("颜色选择"), tr("拾取和转换颜色值")},
+        {tr("文本工具"), tr("文本转换和统计")},
+        {tr("哈希计算"), tr("计算文件哈希值")},
+        {tr("正则工具"), tr("测试和调试正则表达式")},
+    };
+
+    int row = 0, col = 0;
+    for (const auto& card : cards) {
+        ClickableCard* cardWidget = new ClickableCard();
+        cardWidget->setObjectName("quick_card");
+        cardWidget->setMinimumHeight(120);
+        cardWidget->setCursor(Qt::PointingHandCursor);
+
+        QVBoxLayout* layout = new QVBoxLayout(cardWidget);
+        layout->setContentsMargins(20, 20, 20, 20);
+        layout->setSpacing(12);
+
+        QLabel* cardTitleLabel = new QLabel(card.first);
+        cardTitleLabel->setObjectName("card_title");
+        QFont titleFont = cardTitleLabel->font();
+        titleFont.setPointSize(14);
+        titleFont.setBold(true);
+        cardTitleLabel->setFont(titleFont);
+
+        QLabel* descLabel = new QLabel(card.second);
+        descLabel->setObjectName("card_desc");
+        descLabel->setWordWrap(true);
+
+        layout->addWidget(cardTitleLabel);
+        layout->addWidget(descLabel);
+
+        int pluginIndex = -1;
+        const auto& plugins = m_pluginManager->plugins();
+        for (int i = 0; i < plugins.size(); ++i) {
+            if (plugins[i]->name() == card.first) {
+                pluginIndex = i;
+                break;
+            }
+        }
+        if (pluginIndex >= 0) {
+            connect(cardWidget, &ClickableCard::clicked, this, [this, pluginIndex]() {
+                m_stackWidget->setCurrentIndex(pluginIndex + 1);
+                m_sidebar->selectTool(pluginIndex);
+            });
+        }
+
+        cardsLayout->addWidget(cardWidget, row, col);
+
+        col++;
+        if (col >= 3) {
+            col = 0;
+            row++;
+        }
+    }
+
+    mainLayout->addLayout(cardsLayout);
+    mainLayout->addStretch();
+
+    return page;
+}
+
+QWidget* MainWindow::createQuickCard(const QString& title, const QString& description)
+{
+    QWidget* card = new QWidget();
+    card->setObjectName("quick_card");
+    card->setMinimumHeight(120);
+
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(12);
+
+    QLabel* titleLabel = new QLabel(title);
+    titleLabel->setObjectName("card_title");
+    QFont titleFont = titleLabel->font();
+    titleFont.setPointSize(14);
+    titleFont.setBold(true);
+    titleLabel->setFont(titleFont);
+
+    QLabel* descLabel = new QLabel(description);
+    descLabel->setObjectName("card_desc");
+    descLabel->setWordWrap(true);
+
+    layout->addWidget(titleLabel);
+    layout->addWidget(descLabel);
+
+    return card;
 }
 
 void MainWindow::setupUI()
@@ -29,20 +164,12 @@ void MainWindow::setupUI()
     m_splitter = new QSplitter(Qt::Horizontal, this);
 
     m_sidebar = new Sidebar(this);
-    m_sidebar->setFixedWidth(250);
+    m_sidebar->setFixedWidth(260);
 
     m_stackWidget = new QStackedWidget(this);
 
-    QWidget* welcomeWidget = new QWidget(m_stackWidget);
-    QVBoxLayout* welcomeLayout = new QVBoxLayout(welcomeWidget);
-    welcomeLayout->setAlignment(Qt::AlignCenter);
-    m_welcomeLabel = new QLabel(tr("欢迎使用 MultiTool 多功能工具箱\n\n请选择左侧工具开始使用"), welcomeWidget);
-    m_welcomeLabel->setAlignment(Qt::AlignCenter);
-    m_welcomeLabel->setWordWrap(true);
-    QFont font = m_welcomeLabel->font();
-    font.setPointSize(14);
-    m_welcomeLabel->setFont(font);
-    welcomeLayout->addWidget(m_welcomeLabel);
+    QWidget* welcomeWidget = createWelcomePage();
+    welcomeWidget->setObjectName("welcome_page");
     m_stackWidget->addWidget(welcomeWidget);
 
     for (BasePlugin* plugin : m_pluginManager->plugins()) {
@@ -69,3 +196,5 @@ void MainWindow::setupConnections()
         m_stackWidget->setCurrentIndex(index + 1);
     });
 }
+
+#include "main_window.moc"

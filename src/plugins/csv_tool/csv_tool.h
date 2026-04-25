@@ -15,19 +15,23 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QRegularExpression>
-#include <QTextCodec>
 #include <QFile>
 #include <QTextStream>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QStringConverter>
+#endif
 
 class CsvToolPlugin : public BasePlugin
 {
+    Q_OBJECT
+
 public:
     CsvToolPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("CSV工具");
-        m_icon = "📊";
-        m_description = tr("CSV文件处理和转换");
-        m_category = "data";
+        setName(tr("CSV工具"));
+        setIcon("📊");
+        setDescription(tr("CSV文件处理和转换"));
+        setCategory("data");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override
@@ -111,7 +115,11 @@ private slots:
 
         m_csvData.clear();
         QTextStream in(&file);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        in.setEncoding(QStringConverter::Utf8);
+#else
         in.setCodec("UTF-8");
+#endif
         while (!in.atEnd()) m_csvData.append(in.readLine());
         file.close();
         updateTable();

@@ -17,10 +17,10 @@ class SqlFormatterPlugin : public BasePlugin
 public:
     SqlFormatterPlugin(QObject* parent = nullptr) : BasePlugin(parent)
     {
-        m_name = tr("SQL格式化");
-        m_icon = "🗄️";
-        m_description = tr("SQL语句格式化和美化");
-        m_category = "data";
+        setName(tr("SQL格式化"));
+        setIcon("🗄️");
+        setDescription(tr("SQL语句格式化和美化"));
+        setCategory("data");
     }
 
     QWidget* createWidget(QWidget* parent = nullptr) override
@@ -75,12 +75,29 @@ private slots:
         if (m_indentCombo->currentIndex() == 1) indent = "    ";
         else if (m_indentCombo->currentIndex() == 2) indent = "\t";
 
-        QString formatted = sql.replace(QRegularExpression("\\s+"), " ").trimmed();
-        QStringList keywords = {"SELECT", "FROM", "WHERE", "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "ON", "AND", "OR", "GROUP BY", "ORDER BY", "HAVING", "LIMIT", "INSERT INTO", "VALUES", "UPDATE", "SET", "DELETE FROM"};
-        for (const QString& keyword : keywords) {
-            QRegularExpression regex(QString("\\b%1\\b").arg(keyword), QRegularExpression::CaseInsensitiveOption);
+        QString formatted = sql;
+        formatted.replace(QRegularExpression("\\s+"), " ");
+        formatted = formatted.trimmed();
+
+        QStringList newLineKeywords = {
+            "SELECT", "FROM", "WHERE", "JOIN", "LEFT JOIN", "RIGHT JOIN",
+            "INNER JOIN", "GROUP BY", "ORDER BY", "HAVING", "LIMIT",
+            "INSERT INTO", "VALUES", "UPDATE", "DELETE FROM"
+        };
+        QStringList indentKeywords = {"ON", "AND", "OR", "SET"};
+
+        for (const QString& keyword : newLineKeywords) {
+            QRegularExpression regex(QString("\\b%1\\b").arg(QRegularExpression::escape(keyword)),
+                                     QRegularExpression::CaseInsensitiveOption);
             formatted.replace(regex, "\n" + keyword.toUpper());
         }
+
+        for (const QString& keyword : indentKeywords) {
+            QRegularExpression regex(QString("\\b%1\\b").arg(QRegularExpression::escape(keyword)),
+                                     QRegularExpression::CaseInsensitiveOption);
+            formatted.replace(regex, "\n" + indent + keyword.toUpper());
+        }
+
         m_outputEdit->setText(formatted);
     }
 
