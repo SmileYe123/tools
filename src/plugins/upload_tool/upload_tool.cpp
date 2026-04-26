@@ -178,13 +178,17 @@ void SimpleHttpServer::sendResponse(QTcpSocket* socket, int statusCode, const QS
 
 void SimpleHttpServer::sendFile(QTcpSocket* socket, const QString& filePath, const QString& contentType)
 {
-    // 路径安全检查
     QString cleanPath = QDir::cleanPath(filePath);
     if (!cleanPath.startsWith(m_rootDir)) {
         sendResponse(socket, 403, "Forbidden", QByteArray(), "text/plain");
         return;
     }
-    
+
+    if (!isRealPathSafe(cleanPath)) {
+        sendResponse(socket, 403, "Forbidden", QByteArray(), "text/plain");
+        return;
+    }
+
     QFile file(cleanPath);
     if (!file.open(QIODevice::ReadOnly)) {
         sendResponse(socket, 404, "Not Found", QByteArray(), "text/plain");
@@ -197,12 +201,30 @@ void SimpleHttpServer::sendFile(QTcpSocket* socket, const QString& filePath, con
 
 bool SimpleHttpServer::isPathSafe(const QString& path) const
 {
-    // 禁止路径遍历攻击
-    if (path.contains("..")) return false;
-    if (path.contains('\\')) return false;
-    if (path.contains('\0')) return false;
-    // 禁止绝对路径
+    QString decoded = QUrl::fromPercentEncoding(path.toUtf8());
+
+    if (decoded.contains("..")) return false;
+    if (decoded.contains('\\')) return false;
+    if (decoded.contains('\0')) return false;
+
+    QString normalized = QDir::cleanPath(m_rootDir + "/" + decoded);
+    if (!normalized.startsWith(m_rootDir)) return false;
+
     if (!path.isEmpty() && path[0] == '/') return false;
+
+    return true;
+}
+
+bool SimpleHttpServer::isRealPathSafe(const QString& filePath) const
+{
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.exists()) return false;
+
+    QString canonical = fileInfo.canonicalFilePath();
+    if (canonical.isEmpty()) return false;
+
+    if (!canonical.startsWith(m_rootDir)) return false;
+
     return true;
 }
 
@@ -513,7 +535,7 @@ QString UploadToolPlugin::calculateSHA256(const QString& filePath)
     progress.setMinimumDuration(500);
 
     qint64 bytesRead = 0;
-    const qint64 chunkSize = 8192;
+    const qint64 chunkSize = 65536;
     int lastPct = 0;
     while (!file.atEnd()) {
         if (progress.wasCanceled()) {
@@ -642,6 +664,22 @@ bool UploadToolPlugin::publishToLocalServer(const QString& appName, const QStrin
     }
     m_outputEdit->append(tr("  ✓ 已创建目录: %1").arg(packagesDir));
 
+    if (QFile::exists(destExePath)) {
+        int ret = QMessageBox::question(nullptr, tr("文件已存在"),
+            tr("服务器已存在同名文件:\n%1\n\n是否覆盖？").arg(destExePath),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (ret != QMessageBox::Yes) {
+            m_outputEdit->append(tr("  ✗ 用户取消覆盖"));
+            return false;
+        }
+        if (!QFile::remove(destExePath)) {
+            m_outputEdit->append(tr("  ✗ 删除旧文件失败"));
+            QMessageBox::critical(nullptr, tr("错误"), tr("无法删除服务器上的旧文件"));
+            return false;
+        }
+        m_outputEdit->append(tr("  ✓ 已删除旧文件"));
+    }
+
     if (!copyExeToServer(exePath, destExePath)) {
         m_outputEdit->append(tr("  ✗ 复制文件失败"));
         QMessageBox::critical(nullptr, tr("错误"), tr("无法复制 EXE 文件到服务器"));
@@ -682,7 +720,7 @@ bool UploadToolPlugin::publishToRemoteServer(const QString& appName, const QStri
                                             const QString& serverUrl, const QString& releaseNotes)
 {
     m_outputEdit->append(tr("=== 远程服务器模式 ==="));
-    
+
     m_outputEdit->append(tr("\n[1/5] 计算 SHA-256 哈希..."));
     QString hash = calculateSHA256(exePath);
     if (hash.isEmpty()) {
@@ -700,7 +738,7 @@ bool UploadToolPlugin::publishToRemoteServer(const QString& appName, const QStri
     if (!localCacheDir.isEmpty()) {
         QString packagesDir = QDir(localCacheDir).filePath(appName + "/packages");
         QString destExePath = QDir(packagesDir).filePath(exeFileName);
-        
+
         m_outputEdit->append(tr("\n[2/5] 保存到本地缓存..."));
         if (QDir().mkpath(packagesDir)) {
             copyExeToServer(exePath, destExePath);
@@ -712,14 +750,23 @@ bool UploadToolPlugin::publishToRemoteServer(const QString& appName, const QStri
 
     m_outputEdit->append(tr("\n[3/5] 上传到远程服务器..."));
     m_outputEdit->append(tr("  服务器: %1").arg(serverUrl));
-    
-    // 使用 QNetworkAccessManager 上传
-    QNetworkAccessManager manager;
+
+    // 创建网络管理器（如果不存在）
+    if (!m_networkManager) {
+        m_networkManager = new QNetworkAccessManager(this);
+    }
+
+    // 保存上传信息用于回调
+    m_pendingAppName = appName;
+    m_pendingVersion = version;
+    m_pendingExeFileName = exeFileName;
+    m_pendingServerUrl = serverUrl;
+
     QUrl uploadUrl(QString("%1/%2/upload").arg(serverUrl, appName));
     QNetworkRequest request(uploadUrl);
-    
+
     QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
-    
+
     // 添加文件
     QFile* file = new QFile(exePath);
     if (!file->open(QIODevice::ReadOnly)) {
@@ -728,69 +775,108 @@ bool UploadToolPlugin::publishToRemoteServer(const QString& appName, const QStri
         delete multiPart;
         return false;
     }
-    
+
     QHttpPart filePart;
-    filePart.setHeader(QNetworkRequest::ContentDispositionHeader, 
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
                       QVariant(QString("form-data; name=\"file\"; filename=\"%1\"").arg(exeFileName)));
     filePart.setBodyDevice(file);
     file->setParent(multiPart);
     multiPart->append(filePart);
-    
+
     // 添加元数据
     QHttpPart versionPart;
     versionPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"version\""));
     versionPart.setBody(version.toUtf8());
     multiPart->append(versionPart);
-    
+
     QHttpPart hashPart;
     hashPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"hash\""));
     hashPart.setBody(QString("sha256:" + hash).toUtf8());
     multiPart->append(hashPart);
-    
+
     QHttpPart notesPart;
     notesPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"notes\""));
     notesPart.setBody(releaseNotes.toUtf8());
     multiPart->append(notesPart);
-    
-    QNetworkReply* reply = manager.post(request, multiPart);
-    multiPart->setParent(reply);
-    
-    // 等待响应
-    QEventLoop loop;
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    
-    if (reply->error() != QNetworkReply::NoError) {
-        m_outputEdit->append(tr("  ✗ 上传失败: %1").arg(reply->errorString()));
-        QMessageBox::critical(nullptr, tr("上传失败"), tr("无法上传到远程服务器: %1").arg(reply->errorString()));
-        reply->deleteLater();
-        return false;
-    }
-    
-    m_outputEdit->append(tr("  ✓ 上传成功"));
-    reply->deleteLater();
 
-    m_outputEdit->append(tr("\n[4/5] 验证远程服务器..."));
-    // 验证 version.json
-    QUrl versionUrl(QString("%1/%2/version.json").arg(serverUrl, appName));
-    QNetworkRequest versionRequest(versionUrl);
-    QNetworkReply* versionReply = manager.get(versionRequest);
-    
-    connect(versionReply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
-    
-    if (versionReply->error() == QNetworkReply::NoError) {
-        m_outputEdit->append(tr("  ✓ version.json 可访问"));
-    } else {
-        m_outputEdit->append(tr("  ⚠ 无法验证 version.json"));
-    }
-    versionReply->deleteLater();
+    // 异步上传 - 不阻塞 UI
+    m_currentUploadReply = m_networkManager->post(request, multiPart);
+    multiPart->setParent(m_currentUploadReply);
 
-    m_outputEdit->append(tr("\n[5/5] 发布完成"));
-    m_outputEdit->append(tr("  下载 URL: %1/%2/packages/%3").arg(serverUrl, appName, exeFileName));
-    QMessageBox::information(nullptr, tr("发布成功"),
-        tr("版本 %1 已成功上传到远程服务器\n\n下载 URL:\n%2").arg(version, serverUrl + "/" + appName + "/packages/" + exeFileName));
+    // 连接进度和完成信号
+    connect(m_currentUploadReply, &QNetworkReply::uploadProgress,
+            this, &UploadToolPlugin::onUploadProgress);
+    connect(m_currentUploadReply, &QNetworkReply::finished,
+            this, &UploadToolPlugin::onUploadFinished);
+
+    // 禁用发布按钮防止重复操作
+    m_publishBtn->setEnabled(false);
+    m_outputEdit->append(tr("  ⏳ 上传进行中，请等待..."));
+
+    // 返回 true 表示上传已启动（实际结果在回调中处理）
     return true;
+}
+
+void UploadToolPlugin::onUploadProgress(qint64 bytesSent, qint64 bytesTotal)
+{
+    if (bytesTotal > 0) {
+        int percent = static_cast<int>((bytesSent * 100) / bytesTotal);
+        // 只在进度变化超过 10% 时记录日志，避免日志过多
+        if (percent - m_lastReportedPercent >= 10 || percent == 100) {
+            m_outputEdit->append(tr("  进度: %1% (%2 / %3 KB)")
+                .arg(percent)
+                .arg(bytesSent / 1024)
+                .arg(bytesTotal / 1024));
+            m_lastReportedPercent = percent;
+        }
+    }
+}
+
+void UploadToolPlugin::onUploadFinished()
+{
+    if (!m_currentUploadReply) return;
+
+    m_publishBtn->setEnabled(true);
+
+    if (m_currentUploadReply->error() != QNetworkReply::NoError) {
+        QString errorMsg = tr("上传失败: %1").arg(m_currentUploadReply->errorString());
+        m_outputEdit->append(tr("  ✗ %1").arg(errorMsg));
+        QMessageBox::critical(nullptr, tr("上传失败"),
+            tr("无法上传到远程服务器: %1").arg(m_currentUploadReply->errorString()));
+        m_currentUploadReply->deleteLater();
+        m_currentUploadReply = nullptr;
+        emit uploadFinished(false, errorMsg);
+        return;
+    }
+
+    m_outputEdit->append(tr("  ✓ 上传成功"));
+    m_outputEdit->append(tr("\n[4/5] 验证远程服务器..."));
+
+    QUrl versionUrl(QString("%1/%2/version.json").arg(m_pendingServerUrl, m_pendingAppName));
+    QNetworkRequest versionRequest(versionUrl);
+    QNetworkReply* versionReply = m_networkManager->get(versionRequest);
+
+    connect(versionReply, &QNetworkReply::finished, this, [this, versionReply]() {
+        if (versionReply->error() == QNetworkReply::NoError) {
+            m_outputEdit->append(tr("  ✓ version.json 可访问"));
+        } else {
+            m_outputEdit->append(tr("  ⚠ 无法验证 version.json"));
+        }
+        versionReply->deleteLater();
+
+        m_outputEdit->append(tr("\n[5/5] 发布完成"));
+        m_outputEdit->append(tr("  下载 URL: %1/%2/packages/%3")
+            .arg(m_pendingServerUrl, m_pendingAppName, m_pendingExeFileName));
+        m_outputEdit->append(tr("\n✅ 发布完成！"));
+
+        QString successMsg = tr("版本 %1 已成功上传到远程服务器\n\n下载 URL:\n%2")
+            .arg(m_pendingVersion, m_pendingServerUrl + "/" + m_pendingAppName + "/packages/" + m_pendingExeFileName);
+        QMessageBox::information(nullptr, tr("发布成功"), successMsg);
+        emit uploadFinished(true, successMsg);
+    });
+
+    m_currentUploadReply->deleteLater();
+    m_currentUploadReply = nullptr;
 }
 
 bool UploadToolPlugin::publishAsSelfServer(const QString& appName, const QString& version,

@@ -17,9 +17,8 @@
 #include <QRegularExpression>
 #include <QFile>
 #include <QTextStream>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#include <QStringConverter>
-#endif
+#include <QDebug>
+#include <QTextCodec>
 
 class CsvToolPlugin : public BasePlugin
 {
@@ -115,11 +114,7 @@ private slots:
 
         m_csvData.clear();
         QTextStream in(&file);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        in.setEncoding(QStringConverter::Utf8);
-#else
         in.setCodec("UTF-8");
-#endif
         while (!in.atEnd()) m_csvData.append(in.readLine());
         file.close();
         updateTable();
@@ -129,10 +124,20 @@ private slots:
     {
         if (m_csvData.isEmpty()) { m_resultEdit->setText(tr("没有加载数据")); return; }
         QString delimiter = m_delimiterCombo->currentText();
-        QStringList headers = parseCsvLine(m_csvData[0], delimiter);
+        CsvParseResult headerResult = parseCsvLine(m_csvData[0], delimiter);
+        if (!headerResult.isValid) {
+            m_resultEdit->setText(tr("第1行错误: %1").arg(headerResult.errorMsg));
+            return;
+        }
+        QStringList headers = headerResult.fields;
         QString json = "[\n";
         for (int i = 1; i < m_csvData.size(); ++i) {
-            QStringList values = parseCsvLine(m_csvData[i], delimiter);
+            CsvParseResult valueResult = parseCsvLine(m_csvData[i], delimiter);
+            if (!valueResult.isValid) {
+                m_resultEdit->setText(tr("第%1行错误: %2").arg(i + 1).arg(valueResult.errorMsg));
+                return;
+            }
+            QStringList values = valueResult.fields;
             json += "  {\n";
             for (int j = 0; j < headers.size() && j < values.size(); ++j) {
                 json += QString("    \"%1\": \"%2\"").arg(headers[j]).arg(values[j]);
@@ -154,32 +159,50 @@ private:
     {
         if (m_csvData.isEmpty()) return;
         QString delimiter = m_delimiterCombo->currentText();
-        QStringList headers = parseCsvLine(m_csvData[0], delimiter);
+        CsvParseResult headerResult = parseCsvLine(m_csvData[0], delimiter);
+        if (!headerResult.isValid) {
+            m_resultEdit->setText(tr("第1行错误: %1").arg(headerResult.errorMsg));
+            return;
+        }
+        QStringList headers = headerResult.fields;
         m_tableWidget->clear();
         m_tableWidget->setColumnCount(headers.size());
         m_tableWidget->setHorizontalHeaderLabels(headers);
         m_tableWidget->setRowCount(m_csvData.size() - 1);
         for (int i = 1; i < m_csvData.size(); ++i) {
-            QStringList values = parseCsvLine(m_csvData[i], delimiter);
+            CsvParseResult valueResult = parseCsvLine(m_csvData[i], delimiter);
+            QStringList values = valueResult.fields;
             for (int j = 0; j < values.size(); ++j)
                 m_tableWidget->setItem(i - 1, j, new QTableWidgetItem(values[j]));
         }
         m_tableWidget->resizeColumnsToContents();
     }
 
-    QStringList parseCsvLine(const QString& line, const QString& delimiter)
+    struct CsvParseResult {
+        QStringList fields;
+        bool isValid = true;
+        QString errorMsg;
+    };
+
+    CsvParseResult parseCsvLine(const QString& line, const QString& delimiter)
     {
-        QStringList result;
+        CsvParseResult result;
         QString current;
         bool inQuotes = false;
         for (int i = 0; i < line.length(); ++i) {
             QChar c = line[i];
             if (c == '"') { inQuotes = !inQuotes; }
             else if (!inQuotes && line.mid(i, delimiter.length()) == delimiter) {
-                result.append(current); current.clear(); i += delimiter.length() - 1;
+                result.fields.append(current); current.clear(); i += delimiter.length() - 1;
             } else { current += c; }
         }
-        result.append(current);
+        result.fields.append(current);
+
+        if (inQuotes) {
+            result.isValid = false;
+            result.errorMsg = tr("CSV格式错误: 引号未闭合");
+        }
+
         return result;
     }
 

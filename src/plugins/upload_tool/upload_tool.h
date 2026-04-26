@@ -27,8 +27,8 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QHttpMultiPart>
-#include <QEventLoop>
 #include <QUrl>
+#include <QSpinBox>
 
 // 简单的 HTTP 服务器类
 class SimpleHttpServer : public QObject
@@ -56,6 +56,7 @@ private:
                      const QByteArray& content, const QString& contentType);
     void sendFile(QTcpSocket* socket, const QString& filePath, const QString& contentType);
     bool isPathSafe(const QString& path) const;
+    bool isRealPathSafe(const QString& filePath) const;
 
     QTcpServer* m_server = nullptr;
     QString m_rootDir;
@@ -77,6 +78,9 @@ public:
 
     QWidget* createWidget(QWidget* parent = nullptr) override;
 
+signals:
+    void uploadFinished(bool success, const QString& message);
+
 private slots:
     void onProjectSelected(int index);
     void selectExeFile();
@@ -84,6 +88,8 @@ private slots:
     void publishUpdate();
     void clearForm();
     void onPublishModeChanged(int index);
+    void onUploadFinished();
+    void onUploadProgress(qint64 bytesSent, qint64 bytesTotal);
 
 private:
     QString calculateSHA256(const QString& filePath);
@@ -126,7 +132,16 @@ private:
     QWidget* m_widget = nullptr;
     
     bool m_isLoadingConfig = false;
-    
+
     // HTTP 服务器
     SimpleHttpServer* m_httpServer = nullptr;
+
+    // 异步上传相关
+    QNetworkAccessManager* m_networkManager = nullptr;
+    QNetworkReply* m_currentUploadReply = nullptr;
+    QString m_pendingAppName;
+    QString m_pendingVersion;
+    QString m_pendingExeFileName;
+    QString m_pendingServerUrl;
+    int m_lastReportedPercent = -1;  // 进度日志节流
 };

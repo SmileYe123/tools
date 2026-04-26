@@ -80,9 +80,9 @@ private slots:
         formatted = formatted.trimmed();
 
         QStringList newLineKeywords = {
-            "SELECT", "FROM", "WHERE", "JOIN", "LEFT JOIN", "RIGHT JOIN",
-            "INNER JOIN", "GROUP BY", "ORDER BY", "HAVING", "LIMIT",
-            "INSERT INTO", "VALUES", "UPDATE", "DELETE FROM"
+            "DELETE FROM", "INSERT INTO", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
+            "GROUP BY", "ORDER BY", "SELECT", "FROM", "WHERE", "JOIN", "HAVING",
+            "LIMIT", "VALUES", "UPDATE"
         };
         QStringList indentKeywords = {"ON", "AND", "OR", "SET"};
 

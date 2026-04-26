@@ -59,11 +59,12 @@ bool UploadConfig::save()
     if (!file.open(QIODevice::WriteOnly)) {
         return false;
     }
-    
-    file.write(doc.toJson(QJsonDocument::Indented));
+
+    QByteArray jsonData = doc.toJson(QJsonDocument::Indented);
+    qint64 written = file.write(jsonData);
     file.close();
-    
-    return true;
+
+    return written == jsonData.size();
 }
 
 ProjectConfig UploadConfig::projectAt(int index) const

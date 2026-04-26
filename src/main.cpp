@@ -1,6 +1,7 @@
 #include <QApplication>
 #include "core/main_window.h"
 #include "core/config.h"
+#include "core/logger.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,9 +11,13 @@ int main(int argc, char *argv[])
     app.setOrganizationName("MultiTool");
 
     Config::getInstance();
+    Logger::instance();
+    LOG_INFO("MultiTool application started");
 
     MainWindow window;
     window.show();
 
-    return app.exec();
+    int result = app.exec();
+    LOG_INFO("MultiTool application exiting with code: " + QString::number(result));
+    return result;
 }

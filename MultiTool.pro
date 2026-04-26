@@ -12,6 +12,7 @@ SOURCES += \
     src/core/config.cpp \
     src/core/main_window.cpp \
     src/core/plugin_manager.cpp \
+    src/core/logger.cpp \
     src/ui/sidebar.cpp \
     src/ui/theme.cpp \
     src/plugins/color_picker/color_picker.cpp \
@@ -31,6 +32,7 @@ HEADERS += \
     src/core/config.h \
     src/core/main_window.h \
     src/core/plugin_manager.h \
+    src/core/logger.h \
     src/ui/sidebar.h \
     src/ui/theme.h \
     src/plugins/base.h \

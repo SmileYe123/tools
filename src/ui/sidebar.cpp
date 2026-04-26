@@ -84,12 +84,12 @@ void Sidebar::setupToolButtons(const QList<BasePlugin*>& plugins)
 
 void Sidebar::filterTools()
 {
-    QString filter = m_searchEdit->text().trimmed().toLower();
+    QString filter = m_searchEdit->text().trimmed();
     for (QToolButton* button : m_toolButtons) {
         if (filter.isEmpty()) {
             button->show();
         } else {
-            button->setVisible(button->text().toLower().contains(filter));
+            button->setVisible(button->text().contains(filter, Qt::CaseInsensitive));
         }
     }
 }

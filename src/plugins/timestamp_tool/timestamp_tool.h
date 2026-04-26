@@ -116,10 +116,24 @@ private slots:
         QString text = m_dateEdit->text().trimmed();
         if (text.isEmpty()) { m_resultEdit->setText(tr("请输入日期")); return; }
 
-        QDateTime dateTime = QDateTime::fromString(text, "yyyy-MM-dd HH:mm:ss");
-        if (!dateTime.isValid()) dateTime = QDateTime::fromString(text, "yyyy/MM/dd HH:mm:ss");
+        QDateTime dateTime;
+        QStringList formats = {
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy/MM/dd HH:mm:ss",
+            "yyyy.MM.dd HH:mm:ss",
+            "yyyy-MM-dd HH:mm",
+            "yyyy/MM/dd HH:mm",
+            "yyyy.MM.dd HH:mm",
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "yyyy.MM.dd"
+        };
+        for (const QString& fmt : formats) {
+            dateTime = QDateTime::fromString(text, fmt);
+            if (dateTime.isValid()) break;
+        }
 
-        if (!dateTime.isValid()) { m_resultEdit->setText(tr("无效的日期格式")); return; }
+        if (!dateTime.isValid()) { m_resultEdit->setText(tr("无效的日期格式，支持的格式:\nYYYY-MM-DD HH:mm:ss\nYYYY/MM/DD HH:mm:ss\nYYYY.MM.dd HH:mm:ss")); return; }
 
         m_resultEdit->setText(tr("秒级时间戳: %1").arg(dateTime.toSecsSinceEpoch()));
     }
